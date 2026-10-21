@@ -1,0 +1,185 @@
+// CertPath data model — SQLite dialect.
+//
+// NOTE: this file is a copy of `schema.sqlite.prisma`. `npm run db:use:postgres`
+// and `npm run db:use:sqlite` copy the chosen variant over it. Edit
+// `schema.sqlite.prisma` and `schema.postgres.prisma`, never this file.
+//
+// This is the zero-setup development dialect: `npm run setup` creates a local
+// file database with no external services. The model set is identical to
+// `schema.postgres.prisma`; only the datasource block differs.
+//
+// Switch to PostgreSQL for production with: `npm run db:use:postgres`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile    Profile?
+  sessions   Session[]
+  resetTokens PasswordResetToken[]
+  attempts   Attempt[]
+  reviews    Review[]
+  plans      Plan[]
+  messages   ChatMessage[]
+  cards      CustomCard[]
+  bookmarks  Bookmark[]
+}
+
+/// One row per signed-in device. A user may hold several at once, so signing
+/// in on a phone never signs the user out of their laptop.
+model Session {
+  id         String   @id @default(cuid())
+  userId     String
+  token      String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+  userAgent  String?
+  ipAddress  String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+/// Single-use password reset token. Only a keyed hash is stored, so a database
+/// leak cannot be used to take over an account.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Login attempts feed the brute-force throttle.
+model LoginAttempt {
+  id         String   @id @default(cuid())
+  identifier String
+  ipAddress  String?
+  success    Boolean
+  createdAt  DateTime @default(now())
+
+  @@index([identifier, createdAt])
+  @@index([ipAddress, createdAt])
+}
+
+model Profile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  onboarded       Boolean  @default(false)
+  selectedCertIds String   @default("[]")
+  activeCertId    String?
+  streakCount     Int      @default(0)
+  streakBest      Int      @default(0)
+  streakLast      String?
+  settings        String   @default("{}")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Attempt {
+  id          String    @id
+  userId      String
+  certId      String
+  mode        String
+  domainIds   String    @default("[]")
+  questionIds String    @default("[]")
+  answers     String    @default("[]")
+  startedAt   DateTime
+  finishedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, certId])
+}
+
+model Review {
+  id       String   @id
+  userId   String
+  cardId   String
+  reps     Int      @default(0)
+  dueAt    DateTime
+  ease     Float    @default(2.5)
+  interval Float    @default(0)
+  lapses   Int      @default(0)
+  lastAt   DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cardId])
+  @@index([userId, dueAt])
+}
+
+model Plan {
+  id           String   @id
+  userId       String
+  certId       String
+  examDate     String
+  hoursPerWeek Float
+  weakDomains  String   @default("[]")
+  tasks        String   @default("[]")
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, certId])
+}
+
+model ChatMessage {
+  id      String   @id
+  userId  String
+  certId  String
+  role    String
+  content String
+  mode    String?
+  at      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, certId])
+}
+
+model CustomCard {
+  id        String   @id
+  userId    String
+  certId    String
+  front     String
+  back      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, certId])
+}
+
+model Bookmark {
+  id         String   @id @default(cuid())
+  userId     String
+  questionId String
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+}

@@ -1,0 +1,246 @@
+"use client";
+
+import Link from "next/link";
+import { Award, BookOpen, Flag, Target, TrendingUp } from "lucide-react";
+
+import { useApp } from "@/lib/store";
+import { CERT_BY_ID, QUESTION_BY_ID, cardsFor, questionsFor } from "@/data";
+import { VENDORS } from "@/data/factories";
+import { computeReadiness, scoreAttempt, readinessVerdict, todayISO } from "@/lib/utils";
+import { DomainRadar, TrendLine, DomainBars } from "@/components/charts";
+import { Card, CardTitle, Badge, ProgressRing, DisclaimerBanner } from "@/components/ui";
+
+export default function ReadinessPage() {
+  const s = useApp();
+  const certIds = s.selectedCertIds.length ? s.selectedCertIds : ["az-900"];
+  const today = todayISO();
+
+  return (
+    <div className="space-y-6 py-2">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Readiness tracker</h1>
+        <p className="text-sm text-muted-foreground">
+          Estimates based on your practice performance — not guarantees of exam results.
+        </p>
+      </div>
+
+      {certIds.map((id) => {
+        const cert = CERT_BY_ID[id];
+        if (!cert) return null;
+
+        const vendor = VENDORS[cert.vendor];
+        const attempts = s.pastAttempts.filter((a) => a.certId === id);
+        const scored = attempts.map((a) => ({
+          at: a.finishedAt ?? a.startedAt,
+          ...scoreAttempt(a, QUESTION_BY_ID),
+        }));
+        // Oldest first for the trend chart.
+        const scores = scored.map((x) => x.overall);
+
+        const bank = questionsFor(id);
+        const attempted = new Set(attempts.flatMap((a) => a.questionIds)).size;
+        const cardIds = cardsFor(id).map((c) => c.id);
+        const mastered = cardIds.filter((c) => (s.reviews[c]?.reps ?? 0) >= 2).length;
+        const mastery = cardIds.length ? Math.round((mastered / cardIds.length) * 100) : 0;
+        const dueCards = cardIds.filter((c) => (s.reviews[c]?.dueAt ?? 0) <= Date.now()).length;
+
+        const plan = s.plans.find((p) => p.certId === id);
+        const daysUntilExam = plan
+          ? Math.ceil((+new Date(`${plan.examDate}T00:00:00`) - Date.now()) / 86_400_000)
+          : null;
+
+        const readiness = computeReadiness({
+          recentScores: scores,
+          bankCoverage: bank.length ? (attempted / bank.length) * 100 : 0,
+          cardMastery: mastery,
+          daysUntilExam,
+        });
+
+        const radar = cert.domains.map((d) => {
+          let correct = 0;
+          let total = 0;
+          scored.forEach((sc) => {
+            const st = sc.perDomain[d.id];
+            if (st) {
+              correct += st.correct;
+              total += st.total;
+            }
+          });
+          return {
+            domain: d.name.split(" ").slice(0, 2).join(" "),
+            pct: total ? Math.round((correct / total) * 100) : 0,
+          };
+        });
+
+        const weakest = [...radar].sort((a, b) => a.pct - b.pct)[0];
+        const passPct = cert.scoreScale === "percent" ? cert.passingScore : 70;
+
+        // If practice readiness is below target, estimate how much more
+        // focused practice it would take, and compare it with the target date.
+        const daysNeeded = readiness < 85 ? Math.ceil((85 - readiness) * 1.2) : 0;
+        const readyDate = daysNeeded
+          ? new Date(Date.now() + daysNeeded * 86_400_000).toISOString().slice(0, 10)
+          : null;
+        const planAllows = plan ? daysUntilExam !== null && daysUntilExam >= daysNeeded : true;
+
+        const milestones = [
+          { id: `first-quiz-${id}`, label: "First quiz completed", got: attempts.length >= 1 },
+          { id: "streak-7", label: "7-day streak", got: s.streak.count >= 7 },
+          {
+            id: `bank-half-${id}`,
+            label: "50% of bank attempted",
+            got: bank.length > 0 && attempted >= bank.length / 2,
+          },
+          {
+            id: `cards-${id}`,
+            label: "25 flashcards mastered",
+            got: mastered >= 25,
+          },
+          { id: `ready-${id}`, label: "Exam-ready practice level", got: readiness >= 85 },
+        ];
+
+        return (
+          <Card key={id} className="space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-lg">
+                  {cert.examCode} · {cert.name}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  {cert.level} · typical pass mark ≈ {passPct}% · {vendor?.name}
+                </p>
+              </div>
+              <div className="flex items-center gap-4">
+                <ProgressRing value={readiness} size={84}>
+                  <span className="text-xl font-bold">{readiness}%</span>
+                </ProgressRing>
+                {readyDate ? (
+                  <Badge tone={planAllows ? "accent" : "amber"}>
+                    <Target className="h-3 w-3" />
+                    {planAllows
+                      ? `Ready around ${new Date(`${readyDate}T00:00:00`).toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                        })}`
+                      : "Target date looks tight"}
+                  </Badge>
+                ) : (
+                  <Badge tone="green">
+                    <TrendingUp className="h-3 w-3" /> Practice level reached
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            <p className="text-sm leading-relaxed">{readinessVerdict(readiness, cert.name, weakest && weakest.pct < 70 ? weakest.domain : null)}</p>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                {
+                  icon: BookOpen,
+                  label: "Bank coverage",
+                  value: `${attempted}/${bank.length}`,
+                  hint: bank.length ? `${Math.round((attempted / bank.length) * 100)}% seen` : "no bank yet",
+                },
+                {
+                  icon: Award,
+                  label: "Flashcards mastered",
+                  value: `${mastered}/${cardIds.length}`,
+                  hint: `${dueCards} due now`,
+                },
+                {
+                  icon: Flag,
+                  label: "Attempts",
+                  value: `${attempts.length}`,
+                  hint: scores.length ? `last ${scores[scores.length - 1]}%` : "none yet",
+                },
+                {
+                  icon: Target,
+                  label: "Target date",
+                  value: plan ? plan.examDate : "—",
+                  hint: daysUntilExam === null ? "no plan" : `${daysUntilExam} days away`,
+                },
+              ].map((stat) => (
+                <div key={stat.label} className="rounded-xl border border-border bg-muted/30 px-3 py-2.5">
+                  <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                    <stat.icon className="h-3 w-3" /> {stat.label}
+                  </p>
+                  <p className="mt-1 text-lg font-semibold tabular-nums">{stat.value}</p>
+                  <p className="text-[11px] text-muted-foreground">{stat.hint}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div>
+                <h4 className="mb-2 text-sm font-semibold">Domain strength</h4>
+                <DomainRadar data={radar} accent={vendor?.accent} />
+              </div>
+              <div>
+                <h4 className="mb-2 text-sm font-semibold">
+                  Score trend ({attempts.length} attempt{attempts.length === 1 ? "" : "s"})
+                </h4>
+                {scored.length ? (
+                  <TrendLine
+                    data={scored.map((x, i) => ({ label: `#${i + 1}`, score: x.overall }))}
+                    accent={vendor?.accent}
+                  />
+                ) : (
+                  <p className="py-10 text-center text-sm text-muted-foreground">
+                    Complete a quiz to start your trend.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h4 className="mb-2 text-sm font-semibold">Domain breakdown</h4>
+              <DomainBars data={radar} accent={vendor?.accent} />
+            </div>
+
+            <div>
+              <h4 className="mb-2 text-sm font-semibold">Study milestones</h4>
+              <div className="flex flex-wrap gap-2">
+                {milestones.map((m) => (
+                  <Badge key={m.id + String(m.got)} tone={m.got ? "green" : "neutral"}>
+                    <Award className="h-3 w-3" /> {m.label}
+                    {m.got ? " ✓" : ""}
+                  </Badge>
+                ))}
+              </div>
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                Study milestones only — not certifications or credentials.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+              <p className="text-xs text-muted-foreground">
+                Last practice activity:{" "}
+                {attempts.length
+                  ? new Date(
+                      Math.max(...attempts.map((a) => a.finishedAt ?? a.startedAt)),
+                    ).toLocaleDateString()
+                  : "none"}
+                {plan && plan.examDate < today ? " · target date has passed" : ""}
+              </p>
+              <div className="flex gap-2">
+                <Link href="/quiz">
+                  <Badge tone="accent" className="px-3 py-1.5">
+                    Practise now
+                  </Badge>
+                </Link>
+                <a href={cert.officialExamUrl} target="_blank" rel="noreferrer noopener">
+                  <Badge tone="neutral" className="px-3 py-1.5">
+                    Official exam ↗
+                  </Badge>
+                </a>
+              </div>
+            </div>
+          </Card>
+        );
+      })}
+
+      <DisclaimerBanner compact />
+    </div>
+  );
+}

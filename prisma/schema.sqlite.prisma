@@ -1,0 +1,151 @@
+// CertPath data model — SQLite dialect.
+//
+// NOTE: this file is a copy of `schema.sqlite.prisma`. `npm run db:use:postgres`
+// and `npm run db:use:sqlite` copy the chosen variant over it. Edit
+// `schema.sqlite.prisma` and `schema.postgres.prisma`, never this file.
+//
+// This is the zero-setup development dialect: `npm run setup` creates a local
+// file database with no external services. The model set is identical to
+// `schema.postgres.prisma`; only the datasource block differs.
+//
+// Switch to PostgreSQL for production with: `npm run db:use:postgres`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile   Profile?
+  session   Session?
+  attempts  Attempt[]
+  reviews   Review[]
+  plans     Plan[]
+  messages  ChatMessage[]
+  cards     CustomCard[]
+  bookmarks Bookmark[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+}
+
+model Profile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  onboarded       Boolean  @default(false)
+  selectedCertIds String   @default("[]")
+  activeCertId    String?
+  streakCount     Int      @default(0)
+  streakBest      Int      @default(0)
+  streakLast      String?
+  settings        String   @default("{}")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Attempt {
+  id          String    @id
+  userId      String
+  certId      String
+  mode        String
+  domainIds   String    @default("[]")
+  questionIds String    @default("[]")
+  answers     String    @default("[]")
+  startedAt   DateTime
+  finishedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, certId])
+}
+
+model Review {
+  id     String   @id
+  userId String
+  cardId String
+  reps   Int      @default(0)
+  dueAt  DateTime
+  ease   Float    @default(2.5)
+  interval Float  @default(0)
+  lapses Int      @default(0)
+  lastAt DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cardId])
+  @@index([userId, dueAt])
+}
+
+model Plan {
+  id           String   @id
+  userId       String
+  certId       String
+  examDate     String
+  hoursPerWeek Float
+  weakDomains  String   @default("[]")
+  tasks        String   @default("[]")
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, certId])
+}
+
+model ChatMessage {
+  id      String   @id
+  userId  String
+  certId  String
+  role    String
+  content String
+  mode    String?
+  at      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, certId])
+}
+
+model CustomCard {
+  id        String   @id
+  userId    String
+  certId    String
+  front     String
+  back      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, certId])
+}
+
+model Bookmark {
+  id         String   @id @default(cuid())
+  userId     String
+  questionId String
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+}
