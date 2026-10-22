@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { LANGUAGE_CODES } from "./i18n";
+
 /**
  * The contract for the account's stored study state.
  *
@@ -98,8 +100,9 @@ export const stateSchema = z.object({
     .object({
       dailyGoal: z.number().default(45),
       theme: z.enum(["dark", "light"]).default("dark"),
+      language: z.enum(LANGUAGE_CODES).default("en"),
     })
-    .default({ dailyGoal: 45, theme: "dark" }),
+    .default({ dailyGoal: 45, theme: "dark", language: "en" }),
 });
 
 export type ParsedState = z.infer<typeof stateSchema>;

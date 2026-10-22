@@ -36,7 +36,7 @@ const DEFAULT_STATE: AppState = {
   bookmarks: [],
   customCards: [],
   streak: { count: 0, best: 0, lastActive: "" },
-  settings: { dailyGoal: 45, theme: "dark" },
+  settings: { dailyGoal: 45, theme: "dark", language: "en" },
 };
 
 /** Minutes before a forgotten card comes back around. */
@@ -392,6 +392,17 @@ export const useApp = create<AppStore>()(
       // Rehydrate manually so the server-rendered HTML and the client store
       // never disagree.
       skipHydration: true,
+      // Deep-merge settings so a cache written before a new setting existed
+      // (for example `language`) still receives the defaults.
+      merge: (persisted, current) => {
+        const saved = (persisted ?? {}) as Partial<AppStore>;
+        return {
+          ...current,
+          ...saved,
+          settings: { ...current.settings, ...(saved.settings ?? {}) },
+          streak: { ...current.streak, ...(saved.streak ?? {}) },
+        };
+      },
       partialize: (state) => ({
         onboarded: state.onboarded,
         selectedCertIds: state.selectedCertIds,

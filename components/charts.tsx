@@ -173,7 +173,7 @@ export function DomainBars({
       {data.map((d) => (
         <div key={d.domain}>
           <div className="mb-1 flex items-center justify-between text-xs">
-            <span className="truncate pr-2 text-muted-foreground">{d.domain}</span>
+            <span className="truncate pe-2 text-muted-foreground">{d.domain}</span>
             <span className="font-medium tabular-nums">{d.pct}%</span>
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">

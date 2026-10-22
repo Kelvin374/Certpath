@@ -4,17 +4,25 @@ import { useEffect, useRef, useState } from "react";
 import { Send, Bot, Trash2, Sparkles } from "lucide-react";
 
 import { useApp } from "@/lib/store";
+import { useT } from "@/lib/use-i18n";
 import { CERT_BY_ID } from "@/data";
 import { askBuddy, starterPrompts } from "@/lib/ai";
+import type { MessageKey } from "@/lib/i18n";
 import type { BuddyMode } from "@/lib/types";
 import { Card, Button, Badge, Input } from "@/components/ui";
 
-const MODES: { id: BuddyMode; label: string }[] = [
-  { id: "explain", label: "Explain like I'm a beginner" },
-  { id: "analogy", label: "Give me an analogy" },
-  { id: "compare", label: "Compare X vs Y" },
-  { id: "quiz", label: "Quiz me on this" },
-  { id: "tip", label: "Exam tip" },
+const MODES: { id: BuddyMode; labelKey: MessageKey }[] = [
+  { id: "explain", labelKey: "buddy.explain" },
+  { id: "analogy", labelKey: "buddy.analogy" },
+  { id: "compare", labelKey: "buddy.compare" },
+  { id: "quiz", labelKey: "buddy.quiz" },
+  { id: "tip", labelKey: "buddy.tip" },
+];
+
+const FOLLOW_UPS: MessageKey[] = [
+  "buddy.followupAnalogy",
+  "buddy.followupQuiz",
+  "buddy.followupTip",
 ];
 
 /**
@@ -29,7 +37,7 @@ function RichText({ content }: { content: string }) {
         if (!line.trim()) return <div key={i} className="h-1" />;
         if (line.startsWith("• ")) {
           return (
-            <p key={i} className="pl-3">
+            <p key={i} className="ps-3">
               <span className="text-accent">•</span>{" "}
               {inline(line.slice(2))}
             </p>
@@ -71,6 +79,7 @@ function inline(text: string): React.ReactNode[] {
 }
 
 export default function BuddyPage() {
+  const { t, language } = useT();
   const s = useApp();
   const cert = CERT_BY_ID[s.activeCertId ?? "az-900"] ?? CERT_BY_ID["az-900"];
   const messages = s.chatByCert[cert.id] ?? [];
@@ -111,8 +120,7 @@ export default function BuddyPage() {
       s.appendChat(cert.id, {
         id: `a-${Date.now()}-error`,
         role: "assistant",
-        content:
-          "Something went wrong generating that reply. Try rephrasing your question, or ask about a term from the exam outline.",
+        content: t("buddy.error"),
         at: Date.now(),
         mode: m,
       });
@@ -121,19 +129,21 @@ export default function BuddyPage() {
     }
   };
 
-  const starters = starterPrompts(cert.id);
+  const starters = starterPrompts(cert.id, language);
 
   return (
     <div className="mx-auto flex h-[calc(100dvh-13rem)] max-w-2xl flex-col py-2">
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <h1 className="mr-auto text-xl font-bold tracking-tight">AI Study Buddy — {cert.examCode}</h1>
+        <h1 className="me-auto text-xl font-bold tracking-tight">
+          {t("buddy.title", { exam: cert.examCode })}
+        </h1>
         <Badge tone="accent">
-          <Bot className="h-3 w-3" /> Original content only
+          <Bot className="h-3 w-3" /> {t("buddy.originalOnly")}
         </Badge>
         {messages.length ? (
           <button
             onClick={() => s.clearChat(cert.id)}
-            aria-label="Clear conversation"
+            aria-label={t("buddy.clear")}
             className="focus-ring grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:text-danger"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -153,7 +163,7 @@ export default function BuddyPage() {
                 : "border-border text-muted-foreground hover:text-foreground"
             }`}
           >
-            {m.label}
+            {t(m.labelKey)}
           </button>
         ))}
       </div>
@@ -162,8 +172,7 @@ export default function BuddyPage() {
         {messages.length === 0 ? (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Ask about any concept from {cert.name}. The buddy answers from CertPath&apos;s own
-              question and flashcard bank, so everything it says is original study material.
+              {t("buddy.intro", { exam: cert.name })}
             </p>
             <div className="flex flex-wrap gap-2">
               {starters.map((p) => (
@@ -176,9 +185,7 @@ export default function BuddyPage() {
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              I&apos;m an independent study aid — not an official vendor resource.
-            </p>
+            <p className="text-[11px] text-muted-foreground">{t("buddy.note")}</p>
           </div>
         ) : null}
 
@@ -203,21 +210,24 @@ export default function BuddyPage() {
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent" />
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent [animation-delay:120ms]" />
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent [animation-delay:240ms]" />
-            Study Buddy is thinking…
+            {t("buddy.thinking")}
           </p>
         ) : null}
 
         {messages.length > 0 && messages[messages.length - 1].role === "assistant" ? (
           <div className="flex flex-wrap gap-2">
-            {["Give me an analogy", "Quiz me on this", "Exam tip for this topic"].map((f) => (
-              <button
-                key={f}
-                onClick={() => send(f)}
-                className="focus-ring rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
-              >
-                {f}
-              </button>
-            ))}
+            {FOLLOW_UPS.map((key) => {
+              const followUp = t(key);
+              return (
+                <button
+                  key={key}
+                  onClick={() => send(followUp)}
+                  className="focus-ring rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  {followUp}
+                </button>
+              );
+            })}
           </div>
         ) : null}
 
@@ -234,11 +244,11 @@ export default function BuddyPage() {
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={`Ask about ${cert.examCode}…`}
-          aria-label="Message the study buddy"
+          placeholder={t("buddy.placeholder", { exam: cert.examCode })}
+          aria-label={t("buddy.messageLabel")}
           disabled={typing}
         />
-        <Button type="submit" aria-label="Send" disabled={typing || !input.trim()}>
+        <Button type="submit" aria-label={t("buddy.send")} disabled={typing || !input.trim()}>
           <Send className="h-4 w-4" />
         </Button>
       </form>

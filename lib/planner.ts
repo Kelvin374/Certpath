@@ -1,4 +1,5 @@
 import type { Certification } from "@/data/types";
+import { translate, type LanguageCode } from "./i18n";
 import { addDaysISO, clamp, daysBetween, todayISO, uid } from "./utils";
 import type { Plan, PlanTask, TaskKind } from "./types";
 
@@ -9,6 +10,8 @@ export interface GeneratePlanInput {
   hoursPerWeek: number;
   /** Domains to emphasise. */
   weakDomains: string[];
+  /** Interface language used for task labels. Defaults to English. */
+  language?: LanguageCode;
   /** Reuse an existing plan id so regenerating replaces rather than duplicates. */
   id?: string;
 }
@@ -126,6 +129,7 @@ function minutesForDay(base: number, weekday: number): number {
 
 export function generatePlan(input: GeneratePlanInput): Plan {
   const { cert, examDate, hoursPerWeek, weakDomains } = input;
+  const language = input.language ?? "en";
 
   const today = todayISO();
   const totalDays = Math.max(1, daysBetween(today, examDate));
@@ -167,7 +171,7 @@ export function generatePlan(input: GeneratePlanInput): Plan {
 
     // A quiet day the day before the exam — consolidation, not new material.
     if (daysToExam <= 1) {
-      push(date, "review", `Light review — ${cert.examCode} key terms`, 20);
+      push(date, "review", translate(language, "plan.taskLightReview", { exam: cert.examCode }), 20);
       continue;
     }
 
@@ -184,7 +188,11 @@ export function generatePlan(input: GeneratePlanInput): Plan {
       push(
         date,
         "mock",
-        `Timed mock exam — ${cert.examCode} (${cert.questionCount} questions, ${cert.durationMin} min format)`,
+        translate(language, "plan.taskMock", {
+          exam: cert.examCode,
+          count: cert.questionCount,
+          min: cert.durationMin,
+        }),
         mockMinutes,
       );
       remaining -= mockMinutes;
@@ -193,7 +201,13 @@ export function generatePlan(input: GeneratePlanInput): Plan {
     // Flashcard review first — it is the cheapest, highest-return task.
     if (remaining >= 15) {
       const cardMinutes = Math.min(remaining, budget >= 90 ? 20 : 15);
-      push(date, "cards", `Flashcard review — ${domainName(cardDomain)}`, cardMinutes, cardDomain);
+      push(
+        date,
+        "cards",
+        translate(language, "plan.taskCards", { domain: domainName(cardDomain) }),
+        cardMinutes,
+        cardDomain,
+      );
       remaining -= cardMinutes;
     }
 
@@ -203,7 +217,10 @@ export function generatePlan(input: GeneratePlanInput): Plan {
       push(
         date,
         "quiz",
-        `Practice quiz — ${domainName(domain)} (${quizMinutes >= 30 ? 20 : 12} questions)`,
+        translate(language, "plan.taskQuiz", {
+          domain: domainName(domain),
+          count: quizMinutes >= 30 ? 20 : 12,
+        }),
         quizMinutes,
         domain,
       );
@@ -216,7 +233,7 @@ export function generatePlan(input: GeneratePlanInput): Plan {
       push(
         date,
         "read",
-        `Review fundamentals — ${domainName(domain)}`,
+        translate(language, "plan.taskRead", { domain: domainName(domain) }),
         readMinutes,
         domain,
       );
@@ -225,7 +242,7 @@ export function generatePlan(input: GeneratePlanInput): Plan {
 
     // Anything left over becomes an error review pass.
     if (remaining >= 10) {
-      push(date, "review", "Review flagged and missed questions", remaining);
+      push(date, "review", translate(language, "plan.taskReview"), remaining);
     }
   }
 

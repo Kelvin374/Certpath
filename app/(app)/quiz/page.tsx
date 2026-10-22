@@ -5,12 +5,14 @@ import Link from "next/link";
 import { Flag, Bookmark, RotateCcw, Clock, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 
 import { useApp } from "@/lib/store";
+import { useT } from "@/lib/use-i18n";
 import { CERT_BY_ID, questionsFor, QUESTION_BY_ID } from "@/data";
 import { shuffle, uid, scoreAttempt, formatMinutes } from "@/lib/utils";
 import type { Attempt } from "@/lib/types";
 import { Card, CardTitle, Button, Badge, ProgressBar } from "@/components/ui";
 
 export default function QuizPage() {
+  const { t } = useT();
   const s = useApp();
   const bookmarks = useApp((st) => st.bookmarks);
 
@@ -55,15 +57,15 @@ export default function QuizPage() {
     return (
       <div className="mx-auto max-w-xl space-y-4 py-2">
         <Card className="py-2">
-          <CardTitle className="text-xl">Smart Quiz Builder — {cert.examCode}</CardTitle>
+          <CardTitle className="text-xl">{t("quiz.title", { exam: cert.examCode })}</CardTitle>
           <p className="mt-1 text-sm text-muted-foreground">
-            {available} original questions across {cert.domains.length} domains.
+            {t("quiz.available", { count: available, domains: cert.domains.length })}
           </p>
           <div className="mt-5 grid gap-4">
             <label className="grid gap-1.5 text-sm">
-              Domain
+              {t("quiz.domain")}
               <Select2 value={cfg.domain} onChange={(v: string) => setCfg({ ...cfg, domain: v })}>
-                <option value="all">All domains</option>
+                <option value="all">{t("quiz.allDomains")}</option>
                 {cert.domains.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name} ({d.weight}%)
@@ -73,27 +75,27 @@ export default function QuizPage() {
             </label>
 
             <label className="grid gap-1.5 text-sm">
-              Difficulty
+              {t("quiz.difficulty")}
               <Select2 value={cfg.difficulty} onChange={(v: string) => setCfg({ ...cfg, difficulty: v })}>
-                <option value="all">Mixed</option>
-                <option value="1">Easy</option>
-                <option value="2">Medium</option>
-                <option value="3">Hard</option>
+                <option value="all">{t("quiz.mixed")}</option>
+                <option value="1">{t("quiz.easy")}</option>
+                <option value="2">{t("quiz.medium")}</option>
+                <option value="3">{t("quiz.hard")}</option>
               </Select2>
             </label>
 
             <label className="grid gap-1.5 text-sm">
-              Mode
+              {t("quiz.mode")}
               <Select2 value={cfg.mode} onChange={(v: string) => setCfg({ ...cfg, mode: v })}>
-                <option value="practice">Practice (instant feedback)</option>
+                <option value="practice">{t("quiz.practiceMode")}</option>
                 <option value="exam">
-                  Exam simulation ({cert.durationMin} min / {cert.questionCount} q format)
+                  {t("quiz.examMode", { minutes: cert.durationMin, count: cert.questionCount })}
                 </option>
               </Select2>
             </label>
 
             <label className="grid gap-1.5 text-sm">
-              Questions
+              {t("quiz.questions")}
               <Select2 value={String(cfg.count)} onChange={(v: string) => setCfg({ ...cfg, count: +v })}>
                 {[5, 10, 20, 30, 45].map((n) => (
                   <option key={n} value={n}>
@@ -120,7 +122,7 @@ export default function QuizPage() {
                 setSubmitted(false);
               }}
             >
-              Start quiz
+              {t("quiz.start")}
             </Button>
 
             <Button
@@ -130,14 +132,12 @@ export default function QuizPage() {
             >
               <RotateCcw className="h-4 w-4" />
               {bookmarks.length
-                ? `Retry your ${bookmarks.length} flagged/bookmarked question${bookmarks.length === 1 ? "" : "s"}`
-                : "No flagged questions yet"}
+                ? t("quiz.retryFlagged", { count: bookmarks.length })
+                : t("quiz.noFlagged")}
             </Button>
 
             {cfg.missedOnly && !bookmarks.length ? (
-              <p className="text-xs text-muted-foreground">
-                Flag or bookmark questions during a quiz and they will collect here for review.
-              </p>
+              <p className="text-xs text-muted-foreground">{t("quiz.flaggedHint")}</p>
             ) : null}
           </div>
         </Card>
@@ -181,8 +181,8 @@ export default function QuizPage() {
     <div className="mx-auto max-w-2xl space-y-4 py-2">
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
         <span>
-          Question {idx + 1} / {att.questionIds.length}
-          {multi && " · select all that apply"}
+          {t("quiz.questionOf", { current: idx + 1, total: att.questionIds.length })}
+          {multi && ` · ${t("quiz.selectAll")}`}
         </span>
         <div className="flex items-center gap-3">
           {att.mode === "exam" ? (
@@ -191,7 +191,7 @@ export default function QuizPage() {
               {formatMinutes(elapsedMin)} / {cert.durationMin}m
             </span>
           ) : (
-            <span>Practice</span>
+            <span>{t("quiz.practiceLabel")}</span>
           )}
           <span>{cert.examCode}</span>
         </div>
@@ -202,7 +202,7 @@ export default function QuizPage() {
       {overTime ? (
         <p className="flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-500">
           <AlertTriangle className="h-4 w-4" />
-          You are past the {cert.durationMin}-minute window for this exam format.
+          {t("quiz.overtime", { minutes: cert.durationMin })}
         </p>
       ) : null}
 
@@ -235,7 +235,7 @@ export default function QuizPage() {
                 disabled={submitted}
                 className={`focus-ring w-full rounded-xl border p-3 text-left text-sm transition-colors ${cls}`}
               >
-                <span className="mr-2 font-semibold">{o.id.toUpperCase()})</span>
+                <span className="me-2 font-semibold">{o.id.toUpperCase()})</span>
                 {o.text}
                 {submitted ? (
                   <span className="mt-1 block text-xs text-muted-foreground">{o.why}</span>
@@ -245,7 +245,9 @@ export default function QuizPage() {
           })}
         </div>
 
-        {submitted ? <p className="mt-3 text-xs text-muted-foreground">Review: {q.reference}</p> : null}
+        {submitted ? (
+          <p className="mt-3 text-xs text-muted-foreground">{t("quiz.review", { reference: q.reference })}</p>
+        ) : null}
 
         <div className="mt-5 flex flex-wrap items-center gap-2">
           {!submitted ? (
@@ -257,7 +259,7 @@ export default function QuizPage() {
                 }}
                 disabled={!picked.length}
               >
-                Check answer
+                {t("quiz.checkAnswer")}
               </Button>
               <Button
                 variant="ghost"
@@ -265,14 +267,14 @@ export default function QuizPage() {
                 onClick={() => s.answer(idx, picked, !flagged)}
                 aria-pressed={flagged}
               >
-                <Flag className={`h-4 w-4 ${flagged ? "fill-accent text-accent" : ""}`} /> Flag
+                <Flag className={`h-4 w-4 ${flagged ? "fill-accent text-accent" : ""}`} /> {t("quiz.flag")}
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => s.toggleBookmark(q.id)}
                 aria-pressed={bookmarked}
-                aria-label="Bookmark question"
+                aria-label={t("quiz.bookmark")}
               >
                 <Bookmark className={`h-4 w-4 ${bookmarked ? "fill-accent text-accent" : ""}`} />
               </Button>
@@ -291,11 +293,11 @@ export default function QuizPage() {
                   }
                 }}
               >
-                {idx + 1 >= att.questionIds.length ? "Finish" : "Next"}
+                {idx + 1 >= att.questionIds.length ? t("common.finish") : t("common.next")}
               </Button>
               {idx + 1 < att.questionIds.length ? (
                 <Button variant="ghost" size="sm" onClick={() => s.answer(idx, picked, !flagged)}>
-                  Save &amp; flag for review
+                  {t("quiz.saveFlag")}
                 </Button>
               ) : null}
             </>
@@ -303,9 +305,7 @@ export default function QuizPage() {
         </div>
       </Card>
 
-      <p className="text-center text-[11px] text-muted-foreground">
-        Practice score only — CertPath is an independent study aid, not the official exam.
-      </p>
+      <p className="text-center text-[11px] text-muted-foreground">{t("quiz.practiceOnly")}</p>
     </div>
   );
 }
@@ -343,6 +343,7 @@ function Results({
   certId: string;
   onRetry: () => void;
 }) {
+  const { t } = useT();
   const { overall, perDomain, results } = scoreAttempt(attempt, QUESTION_BY_ID);
   const cert = CERT_BY_ID[certId];
   const passPct = cert.scoreScale === "percent" ? cert.passingScore : 70;
@@ -351,31 +352,29 @@ function Results({
   return (
     <div className="mx-auto max-w-2xl space-y-4 py-2">
       <Card className="text-center">
-        <CardTitle className="text-xl">Results — {cert.examCode}</CardTitle>
+        <CardTitle className="text-xl">{t("quiz.results", { exam: cert.examCode })}</CardTitle>
         <p
           className={`mt-4 text-5xl font-bold ${overall >= passPct ? "text-emerald-500" : "text-amber-500"}`}
         >
           {overall}%
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          {overall >= passPct
-            ? "At or above the typical pass mark — a practice estimate only."
-            : "Below the typical pass mark — keep drilling the weak domains."}
+          {overall >= passPct ? t("quiz.abovePass") : t("quiz.belowPass")}
         </p>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           <Button variant="secondary" onClick={onRetry}>
-            Build another quiz
+            {t("quiz.buildAnother")}
           </Button>
           {cert ? (
             <a href={cert.officialExamUrl} target="_blank" rel="noreferrer noopener">
-              <Button variant="outline">Take the official exam ↗</Button>
+              <Button variant="outline">{t("quiz.official")}</Button>
             </a>
           ) : null}
         </div>
       </Card>
 
       <Card>
-        <CardTitle>Per-domain breakdown</CardTitle>
+        <CardTitle>{t("quiz.perDomain")}</CardTitle>
         <div className="mt-4 space-y-3">
           {cert.domains.map((d) => {
             const st = perDomain[d.id] ?? { pct: 0, correct: 0, total: 0 };
@@ -396,10 +395,8 @@ function Results({
 
       {missed.length ? (
         <Card>
-          <CardTitle>Questions to revisit</CardTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Flag or bookmark these and they will appear in the quiz builder&apos;s retry set.
-          </p>
+          <CardTitle>{t("quiz.revisit")}</CardTitle>
+          <p className="mt-1 text-sm text-muted-foreground">{t("quiz.revisitHint")}</p>
           <ul className="mt-4 space-y-2">
             {missed.map((id) => {
               const q = QUESTION_BY_ID[id];
@@ -413,8 +410,9 @@ function Results({
                   <div className="min-w-0">
                     <p className="font-medium">{q.prompt}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      Correct answer: {q.correct.map((c) => c.toUpperCase()).join(", ")} —{" "}
-                      {q.options.find((o) => o.id === q.correct[0])?.text}
+                      {t("quiz.correctAnswer", {
+                        answer: `${q.correct.map((c) => c.toUpperCase()).join(", ")} — ${q.options.find((o) => o.id === q.correct[0])?.text ?? ""}`,
+                      })}
                     </p>
                     <p className="mt-0.5 text-[11px] text-muted-foreground">
                       {cert.domains.find((d) => d.id === q.domainId)?.name} · {q.reference}
@@ -428,15 +426,13 @@ function Results({
       ) : (
         <Card className="flex items-center gap-3">
           <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-          <p className="text-sm">
-            Nothing missed. Bank the question and move on — or push into a harder domain.
-          </p>
+          <p className="text-sm">{t("quiz.nothingMissed")}</p>
         </Card>
       )}
 
       <p className="text-center text-[11px] text-muted-foreground">
         <Link href="/readiness" className="text-accent hover:underline">
-          See how this moved your readiness estimate →
+          {t("quiz.seeReadiness")}
         </Link>
       </p>
     </div>

@@ -12,6 +12,7 @@ import {
 
 import { CERTIFICATIONS, CONTENT_STATS } from "@/data";
 import { VENDORS } from "@/data/factories";
+import { LanguageSwitcher } from "@/components/chrome";
 import { Button, Card, DisclaimerBanner } from "@/components/ui";
 
 const FEATURES = [
@@ -61,10 +62,11 @@ export default function LandingPage() {
             </span>
             <span className="text-sm font-bold tracking-tight">CertPath</span>
           </Link>
-          <nav className="ml-auto flex items-center gap-2">
+          <nav className="ms-auto flex items-center gap-2">
             <Link href="/policy" className="focus-ring hidden rounded-lg px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground sm:block">
               Content policy
             </Link>
+            <LanguageSwitcher className="hidden sm:block" />
             <Link href="/login">
               <Button size="sm" variant="ghost">
                 Sign in

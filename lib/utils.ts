@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+import { translate, type LanguageCode } from "./i18n";
 import type { Attempt } from "./types";
 import type { Question } from "@/data/types";
 
@@ -227,21 +228,23 @@ export function readinessVerdict(
   readiness: number,
   certName: string,
   weakestDomain: string | null,
+  language: LanguageCode = "en",
 ): string {
   const band = readinessBand(readiness);
   const focus = weakestDomain
-    ? `Your weakest area is ${weakestDomain} — concentrate the next few study blocks there.`
-    : "Take a quiz in each domain to reveal which areas need the most attention.";
+    ? translate(language, "ready.focusWeak", { domain: weakestDomain })
+    : translate(language, "ready.focusNone");
+  const vars = { cert: certName, focus };
 
   switch (band) {
     case "strong":
-      return `Your practice readiness for ${certName} looks strong. Keep the streak going, then book the official exam when you feel ready. ${focus}`;
+      return translate(language, "ready.verdictStrong", vars);
     case "close":
-      return `You are getting close on ${certName}. Most learners need a few more focused sessions on weak domains before they feel exam-ready. ${focus}`;
+      return translate(language, "ready.verdictClose", vars);
     case "building":
-      return `You are building a solid base for ${certName}. Consistent short sessions and spaced flashcard reviews will move this faster than long cramming sessions. ${focus}`;
+      return translate(language, "ready.verdictBuilding", vars);
     default:
-      return `You are still building your foundation for ${certName}. Start with one short quiz per domain and let the planner set a steady weekly rhythm. ${focus}`;
+      return translate(language, "ready.verdictEarly", vars);
   }
 }
 

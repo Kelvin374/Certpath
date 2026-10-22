@@ -7,6 +7,7 @@ import {
   Database,
   FileText,
   KeyRound,
+  Languages,
   Layers,
   MessageSquare,
   Monitor,
@@ -16,6 +17,7 @@ import {
   User,
 } from "lucide-react";
 
+import { LanguageSwitcher } from "@/components/chrome";
 import { useAuth } from "@/components/providers";
 import {
   Badge,
@@ -28,6 +30,7 @@ import {
   Input,
 } from "@/components/ui";
 import { describeSessionActivity, describeUserAgent } from "@/lib/device";
+import { useT } from "@/lib/use-i18n";
 import { cn } from "@/lib/utils";
 
 /* -------------------------------------------------------------------------
@@ -179,6 +182,7 @@ function deviceIcon(userAgent: string | null) {
  * ---------------------------------------------------------------------- */
 
 export default function AccountPage() {
+  const { t } = useT();
   const router = useRouter();
   const { user: authUser, refresh } = useAuth();
 
@@ -459,11 +463,21 @@ export default function AccountPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-5 py-2">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Account</h1>
-        <p className="text-sm text-muted-foreground">
-          Your profile, password, and the devices currently signed in to CertPath.
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight">{t("account.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("account.subtitle")}</p>
       </div>
+
+      {/* ── Language ────────────────────────────────────────────────── */}
+      <Card>
+        <CardTitle className="flex items-center gap-2">
+          <Languages className="h-4 w-4 text-accent" /> {t("account.languageTitle")}
+        </CardTitle>
+        <p className="mt-1 text-sm text-muted-foreground">{t("account.languageDesc")}</p>
+        <div className="mt-3">
+          <LanguageSwitcher />
+        </div>
+        <p className="mt-3 text-[11px] text-muted-foreground">{t("account.languageNote")}</p>
+      </Card>
 
       {loadError ? (
         <p

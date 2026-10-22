@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 
 import { useAuth } from "./providers";
+import { LanguageSwitcher } from "./chrome";
 import { Button, Card, DisclaimerBanner, Field, Input } from "./ui";
 
 type Mode = "login" | "register";
@@ -57,12 +58,15 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-12">
-      <Link href="/" className="focus-ring mb-8 flex items-center gap-2.5">
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-accent/15 text-accent">
-          <ShieldCheck className="h-5 w-5" />
-        </span>
-        <span className="text-sm font-bold tracking-tight">CertPath</span>
-      </Link>
+      <div className="mb-8 flex items-center justify-between gap-3">
+        <Link href="/" className="focus-ring flex items-center gap-2.5">
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-accent/15 text-accent">
+            <ShieldCheck className="h-5 w-5" />
+          </span>
+          <span className="text-sm font-bold tracking-tight">CertPath</span>
+        </Link>
+        <LanguageSwitcher />
+      </div>
 
       <h1 className="text-2xl font-bold tracking-tight">
         {mode === "login" ? "Welcome back" : "Create your account"}

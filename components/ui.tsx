@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { ShieldAlert } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/use-i18n";
 
 /* -------------------------------------------------------------------------
  * Card
@@ -316,6 +317,8 @@ export function DisclaimerBanner({
   compact?: boolean;
   className?: string;
 }) {
+  const { t } = useT();
+
   return (
     <div
       className={cn(
@@ -326,10 +329,7 @@ export function DisclaimerBanner({
     >
       <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden />
       <p className="leading-relaxed">
-        <strong className="text-foreground/80">Independent study aid.</strong> CertPath is not
-        affiliated with, endorsed by or sponsored by any certification vendor. All practice content
-        is original, scores are estimates only, and "ready" never means certified. Always book the
-        official exam through the vendor.
+        <strong className="text-foreground/80">{t("disclaimer.title")}</strong> {t("disclaimer.body")}
       </p>
     </div>
   );

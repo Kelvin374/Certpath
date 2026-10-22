@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Award, BookOpen, Flag, Target, TrendingUp } from "lucide-react";
 
 import { useApp } from "@/lib/store";
+import { useT } from "@/lib/use-i18n";
 import { CERT_BY_ID, QUESTION_BY_ID, cardsFor, questionsFor } from "@/data";
 import { VENDORS } from "@/data/factories";
 import { computeReadiness, scoreAttempt, readinessVerdict, todayISO } from "@/lib/utils";
@@ -11,6 +12,7 @@ import { DomainRadar, TrendLine, DomainBars } from "@/components/charts";
 import { Card, CardTitle, Badge, ProgressRing, DisclaimerBanner } from "@/components/ui";
 
 export default function ReadinessPage() {
+  const { t, language } = useT();
   const s = useApp();
   const certIds = s.selectedCertIds.length ? s.selectedCertIds : ["az-900"];
   const today = todayISO();
@@ -18,10 +20,8 @@ export default function ReadinessPage() {
   return (
     <div className="space-y-6 py-2">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Readiness tracker</h1>
-        <p className="text-sm text-muted-foreground">
-          Estimates based on your practice performance — not guarantees of exam results.
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight">{t("ready.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("ready.subtitle")}</p>
       </div>
 
       {certIds.map((id) => {
@@ -84,19 +84,19 @@ export default function ReadinessPage() {
         const planAllows = plan ? daysUntilExam !== null && daysUntilExam >= daysNeeded : true;
 
         const milestones = [
-          { id: `first-quiz-${id}`, label: "First quiz completed", got: attempts.length >= 1 },
-          { id: "streak-7", label: "7-day streak", got: s.streak.count >= 7 },
+          { id: `first-quiz-${id}`, label: t("ready.mFirstQuiz"), got: attempts.length >= 1 },
+          { id: "streak-7", label: t("ready.mStreak"), got: s.streak.count >= 7 },
           {
             id: `bank-half-${id}`,
-            label: "50% of bank attempted",
+            label: t("ready.mHalfBank"),
             got: bank.length > 0 && attempted >= bank.length / 2,
           },
           {
             id: `cards-${id}`,
-            label: "25 flashcards mastered",
+            label: t("ready.mCards"),
             got: mastered >= 25,
           },
-          { id: `ready-${id}`, label: "Exam-ready practice level", got: readiness >= 85 },
+          { id: `ready-${id}`, label: t("ready.mReady"), got: readiness >= 85 },
         ];
 
         return (
@@ -107,7 +107,7 @@ export default function ReadinessPage() {
                   {cert.examCode} · {cert.name}
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  {cert.level} · typical pass mark ≈ {passPct}% · {vendor?.name}
+                  {t("ready.passMark", { level: cert.level, pass: passPct, vendor: vendor?.name ?? "" })}
                 </p>
               </div>
               <div className="flex items-center gap-4">
@@ -118,47 +118,63 @@ export default function ReadinessPage() {
                   <Badge tone={planAllows ? "accent" : "amber"}>
                     <Target className="h-3 w-3" />
                     {planAllows
-                      ? `Ready around ${new Date(`${readyDate}T00:00:00`).toLocaleDateString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                        })}`
-                      : "Target date looks tight"}
+                      ? t("ready.readyAround", {
+                          date: new Date(`${readyDate}T00:00:00`).toLocaleDateString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                          }),
+                        })
+                      : t("ready.targetTight")}
                   </Badge>
                 ) : (
                   <Badge tone="green">
-                    <TrendingUp className="h-3 w-3" /> Practice level reached
+                    <TrendingUp className="h-3 w-3" /> {t("ready.practiceReached")}
                   </Badge>
                 )}
               </div>
             </div>
 
-            <p className="text-sm leading-relaxed">{readinessVerdict(readiness, cert.name, weakest && weakest.pct < 70 ? weakest.domain : null)}</p>
+            <p className="text-sm leading-relaxed">
+              {readinessVerdict(
+                readiness,
+                cert.name,
+                weakest && weakest.pct < 70 ? weakest.domain : null,
+                language,
+              )}
+            </p>
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[
                 {
                   icon: BookOpen,
-                  label: "Bank coverage",
+                  label: t("ready.bankCoverage"),
                   value: `${attempted}/${bank.length}`,
-                  hint: bank.length ? `${Math.round((attempted / bank.length) * 100)}% seen` : "no bank yet",
+                  hint: bank.length
+                    ? t("ready.seen", { pct: Math.round((attempted / bank.length) * 100) })
+                    : t("ready.noBank"),
                 },
                 {
                   icon: Award,
-                  label: "Flashcards mastered",
+                  label: t("ready.cardsMastered"),
                   value: `${mastered}/${cardIds.length}`,
-                  hint: `${dueCards} due now`,
+                  hint: t("ready.dueNow", { count: dueCards }),
                 },
                 {
                   icon: Flag,
-                  label: "Attempts",
+                  label: t("ready.attempts"),
                   value: `${attempts.length}`,
-                  hint: scores.length ? `last ${scores[scores.length - 1]}%` : "none yet",
+                  hint: scores.length
+                    ? t("ready.lastScore", { score: scores[scores.length - 1] })
+                    : t("ready.noneYet"),
                 },
                 {
                   icon: Target,
-                  label: "Target date",
+                  label: t("ready.targetDate"),
                   value: plan ? plan.examDate : "—",
-                  hint: daysUntilExam === null ? "no plan" : `${daysUntilExam} days away`,
+                  hint:
+                    daysUntilExam === null
+                      ? t("ready.noPlan")
+                      : t("ready.daysAway", { days: daysUntilExam }),
                 },
               ].map((stat) => (
                 <div key={stat.label} className="rounded-xl border border-border bg-muted/30 px-3 py-2.5">
@@ -173,12 +189,12 @@ export default function ReadinessPage() {
 
             <div className="grid gap-4 lg:grid-cols-2">
               <div>
-                <h4 className="mb-2 text-sm font-semibold">Domain strength</h4>
+                <h4 className="mb-2 text-sm font-semibold">{t("ready.domainStrength")}</h4>
                 <DomainRadar data={radar} accent={vendor?.accent} />
               </div>
               <div>
                 <h4 className="mb-2 text-sm font-semibold">
-                  Score trend ({attempts.length} attempt{attempts.length === 1 ? "" : "s"})
+                  {t("ready.scoreTrend", { count: attempts.length })}
                 </h4>
                 {scored.length ? (
                   <TrendLine
@@ -187,19 +203,19 @@ export default function ReadinessPage() {
                   />
                 ) : (
                   <p className="py-10 text-center text-sm text-muted-foreground">
-                    Complete a quiz to start your trend.
+                    {t("ready.completeQuiz")}
                   </p>
                 )}
               </div>
             </div>
 
             <div>
-              <h4 className="mb-2 text-sm font-semibold">Domain breakdown</h4>
+              <h4 className="mb-2 text-sm font-semibold">{t("ready.domainBreakdown")}</h4>
               <DomainBars data={radar} accent={vendor?.accent} />
             </div>
 
             <div>
-              <h4 className="mb-2 text-sm font-semibold">Study milestones</h4>
+              <h4 className="mb-2 text-sm font-semibold">{t("ready.milestones")}</h4>
               <div className="flex flex-wrap gap-2">
                 {milestones.map((m) => (
                   <Badge key={m.id + String(m.got)} tone={m.got ? "green" : "neutral"}>
@@ -208,30 +224,29 @@ export default function ReadinessPage() {
                   </Badge>
                 ))}
               </div>
-              <p className="mt-1 text-[10px] text-muted-foreground">
-                Study milestones only — not certifications or credentials.
-              </p>
+              <p className="mt-1 text-[10px] text-muted-foreground">{t("ready.milestonesNote")}</p>
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
               <p className="text-xs text-muted-foreground">
-                Last practice activity:{" "}
-                {attempts.length
-                  ? new Date(
-                      Math.max(...attempts.map((a) => a.finishedAt ?? a.startedAt)),
-                    ).toLocaleDateString()
-                  : "none"}
-                {plan && plan.examDate < today ? " · target date has passed" : ""}
+                {t("ready.lastActivity", {
+                  date: attempts.length
+                    ? new Date(
+                        Math.max(...attempts.map((a) => a.finishedAt ?? a.startedAt)),
+                      ).toLocaleDateString()
+                    : t("ready.none"),
+                })}
+                {plan && plan.examDate < today ? t("ready.targetPassed") : ""}
               </p>
               <div className="flex gap-2">
                 <Link href="/quiz">
                   <Badge tone="accent" className="px-3 py-1.5">
-                    Practise now
+                    {t("ready.practiseNow")}
                   </Badge>
                 </Link>
                 <a href={cert.officialExamUrl} target="_blank" rel="noreferrer noopener">
                   <Badge tone="neutral" className="px-3 py-1.5">
-                    Official exam ↗
+                    {t("common.officialExamArrow")}
                   </Badge>
                 </a>
               </div>

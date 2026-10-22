@@ -14,6 +14,7 @@ import {
   Flame,
   Gauge,
   Layers,
+  Languages,
   LayoutDashboard,
   LogOut,
   Moon,
@@ -25,7 +26,9 @@ import {
 
 import { CERT_BY_ID, cardsFor, questionsFor } from "@/data";
 import { VENDORS } from "@/data/factories";
+import { LANGUAGES, type LanguageCode } from "@/lib/i18n";
 import { useApp } from "@/lib/store";
+import { useLanguage, useT } from "@/lib/use-i18n";
 import { cn } from "@/lib/utils";
 import { useAuth } from "./providers";
 import { Badge, Button, Card, DisclaimerBanner, ProgressBar } from "./ui";
@@ -35,6 +38,7 @@ import { Badge, Button, Card, DisclaimerBanner, ProgressBar } from "./ui";
  * ---------------------------------------------------------------------- */
 
 export function ExamCard({ certId }: { certId: string }) {
+  const { t } = useT();
   const cert = CERT_BY_ID[certId];
   const router = useRouter();
   const selected = useApp((s) => s.selectedCertIds.includes(certId));
@@ -74,25 +78,25 @@ export function ExamCard({ certId }: { certId: string }) {
         </div>
         {hasBank ? (
           <Badge tone="green">
-            <Check className="h-3 w-3" /> Bank ready
+            <Check className="h-3 w-3" /> {t("card.bankReady")}
           </Badge>
         ) : (
-          <Badge tone="neutral">Metadata only</Badge>
+          <Badge tone="neutral">{t("card.metadataOnly")}</Badge>
         )}
       </div>
 
       <p className="line-clamp-3 text-sm text-muted-foreground">{cert.description}</p>
 
       <div className="flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
-        <Badge tone="neutral">{cert.durationMin} min</Badge>
-        <Badge tone="neutral">{cert.questionCount} questions</Badge>
+        <Badge tone="neutral">{t("card.minutes", { count: cert.durationMin })}</Badge>
+        <Badge tone="neutral">{t("card.questions", { count: cert.questionCount })}</Badge>
         {hasBank ? (
           <>
-            <Badge tone="accent">{questions.length} practice questions</Badge>
-            <Badge tone="accent">{cards.length} flashcards</Badge>
+            <Badge tone="accent">{t("card.practiceQuestions", { count: questions.length })}</Badge>
+            <Badge tone="accent">{t("card.flashcards", { count: cards.length })}</Badge>
           </>
         ) : (
-          <Badge tone="neutral">No practice bank yet</Badge>
+          <Badge tone="neutral">{t("card.noBank")}</Badge>
         )}
       </div>
 
@@ -119,7 +123,7 @@ export function ExamCard({ certId }: { certId: string }) {
               router.push("/quiz");
             }}
           >
-            <ClipboardCheck className="h-3.5 w-3.5" /> Practice
+            <ClipboardCheck className="h-3.5 w-3.5" /> {t("card.practice")}
           </Button>
         ) : null}
         <Button
@@ -131,15 +135,15 @@ export function ExamCard({ certId }: { certId: string }) {
           }}
           aria-pressed={selected}
         >
-          {selected ? "Target selected" : "Set as target"}
+          {selected ? t("card.targetSelected") : t("card.setTarget")}
         </Button>
         <a
           href={cert.officialExamUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="focus-ring ml-auto inline-flex items-center gap-1 rounded text-[11px] text-muted-foreground hover:text-foreground"
+          className="focus-ring ms-auto inline-flex items-center gap-1 rounded text-[11px] text-muted-foreground hover:text-foreground"
         >
-          Official exam <ExternalLink className="h-3 w-3" />
+          {t("card.officialExam")} <ExternalLink className="h-3 w-3" />
         </a>
       </div>
     </Card>
@@ -151,13 +155,13 @@ export function ExamCard({ certId }: { certId: string }) {
  * ---------------------------------------------------------------------- */
 
 export const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/quiz", label: "Quiz", icon: ClipboardCheck },
-  { href: "/flashcards", label: "Flashcards", icon: Layers },
-  { href: "/planner", label: "Planner", icon: CalendarDays },
-  { href: "/readiness", label: "Readiness", icon: Gauge },
-  { href: "/buddy", label: "Study Buddy", icon: Bot },
-  { href: "/catalog", label: "Catalog", icon: Compass },
+  { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard },
+  { href: "/quiz", labelKey: "nav.quiz", icon: ClipboardCheck },
+  { href: "/flashcards", labelKey: "nav.flashcards", icon: Layers },
+  { href: "/planner", labelKey: "nav.planner", icon: CalendarDays },
+  { href: "/readiness", labelKey: "nav.readiness", icon: Gauge },
+  { href: "/buddy", labelKey: "nav.buddy", icon: Bot },
+  { href: "/catalog", labelKey: "nav.catalog", icon: Compass },
 ] as const;
 
 /* -------------------------------------------------------------------------
@@ -165,6 +169,7 @@ export const NAV_ITEMS = [
  * ---------------------------------------------------------------------- */
 
 export function ExamSwitcher({ className }: { className?: string }) {
+  const { t } = useT();
   const selectedCertIds = useApp((s) => s.selectedCertIds);
   const activeCertId = useApp((s) => s.activeCertId);
   const setActiveCert = useApp((s) => s.setActiveCert);
@@ -183,7 +188,7 @@ export function ExamSwitcher({ className }: { className?: string }) {
           className,
         )}
       >
-        <Target className="h-3.5 w-3.5" /> Choose an exam
+        <Target className="h-3.5 w-3.5" /> {t("chrome.chooseExam")}
       </Link>
     );
   }
@@ -192,7 +197,7 @@ export function ExamSwitcher({ className }: { className?: string }) {
     <select
       value={activeCertId ?? options[0].id}
       onChange={(e) => setActiveCert(e.target.value)}
-      aria-label="Active exam"
+      aria-label={t("chrome.selectExam")}
       className={cn(
         "focus-ring h-9 max-w-[190px] rounded-xl border border-border bg-background px-2.5 text-xs",
         className,
@@ -208,17 +213,52 @@ export function ExamSwitcher({ className }: { className?: string }) {
 }
 
 /* -------------------------------------------------------------------------
+ * Language switcher
+ * ---------------------------------------------------------------------- */
+
+export function LanguageSwitcher({ className }: { className?: string }) {
+  const language = useLanguage();
+  const { t } = useT();
+  const setSettings = useApp((s) => s.setSettings);
+
+  return (
+    <div className={cn("relative", className)}>
+      <Languages
+        className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+        aria-hidden
+      />
+      {/* Narrow on phones so the top bar keeps room for the exam picker; the
+          native picker still shows every language's full native name. */}
+      <select
+        value={language}
+        onChange={(e) => setSettings({ language: e.target.value as LanguageCode })}
+        aria-label={t("chrome.chooseLanguage")}
+        title={t("chrome.language")}
+        className="focus-ring h-9 w-[6.75rem] cursor-pointer rounded-xl border border-border bg-background ps-8 pe-2 text-xs text-muted-foreground transition-colors hover:text-foreground sm:w-auto sm:max-w-[10rem]"
+      >
+        {LANGUAGES.map((option) => (
+          <option key={option.code} value={option.code}>
+            {option.nativeName}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------
  * Theme toggle
  * ---------------------------------------------------------------------- */
 
 export function ThemeToggle() {
+  const { t } = useT();
   const theme = useApp((s) => s.settings.theme);
   const setSettings = useApp((s) => s.setSettings);
 
   return (
     <button
       onClick={() => setSettings({ theme: theme === "dark" ? "light" : "dark" })}
-      aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+      aria-label={theme === "dark" ? t("chrome.switchLight") : t("chrome.switchDark")}
       className="focus-ring grid h-9 w-9 place-items-center rounded-xl border border-border text-muted-foreground transition-colors hover:text-foreground"
     >
       {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -231,6 +271,7 @@ export function ThemeToggle() {
  * ---------------------------------------------------------------------- */
 
 export function AccountMenu() {
+  const { t } = useT();
   const { user, accountsEnabled, syncStatus, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -249,7 +290,7 @@ export function AccountMenu() {
       <Link
         href="/login"
         className="focus-ring grid h-9 w-9 place-items-center rounded-xl border border-border text-muted-foreground hover:text-foreground"
-        aria-label="Sign in"
+        aria-label={t("chrome.signIn")}
       >
         <UserIcon className="h-4 w-4" />
       </Link>
@@ -270,7 +311,7 @@ export function AccountMenu() {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-2 w-60 rounded-2xl border border-border bg-card p-2 shadow-soft"
+          className="absolute end-0 z-50 mt-2 w-60 rounded-2xl border border-border bg-card p-2 shadow-soft"
         >
           {user ? (
             <div className="px-2.5 py-2">
@@ -278,22 +319,20 @@ export function AccountMenu() {
               <p className="truncate text-xs text-muted-foreground">{user.email}</p>
               <p className="mt-1 text-[11px] text-muted-foreground">
                 {syncStatus === "saving"
-                  ? "Saving…"
+                  ? t("chrome.syncSaving")
                   : syncStatus === "saved"
-                    ? "Synced to your account"
+                    ? t("chrome.synced")
                     : syncStatus === "offline"
-                      ? "Offline — changes stay on this device"
+                      ? t("chrome.offline")
                       : syncStatus === "error"
-                        ? "Sync failed — retrying"
-                        : "Signed in"}
+                        ? t("chrome.syncFailed")
+                        : t("chrome.signedIn")}
               </p>
             </div>
           ) : (
             <div className="px-2.5 py-2">
-              <p className="text-sm font-medium">Not signed in</p>
-              <p className="text-xs text-muted-foreground">
-                Progress is saved on this device only.
-              </p>
+              <p className="text-sm font-medium">{t("chrome.notSignedIn")}</p>
+              <p className="text-xs text-muted-foreground">{t("chrome.deviceOnly")}</p>
             </div>
           )}
           <div className="my-1 h-px bg-border" />
@@ -304,7 +343,7 @@ export function AccountMenu() {
               onClick={() => setOpen(false)}
               className="focus-ring flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
             >
-              <ShieldCheck className="h-4 w-4" /> Account &amp; security
+              <ShieldCheck className="h-4 w-4" /> {t("chrome.accountSecurity")}
             </Link>
           ) : null}
           {user ? (
@@ -316,7 +355,7 @@ export function AccountMenu() {
               role="menuitem"
               className="focus-ring flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
             >
-              <LogOut className="h-4 w-4" /> Sign out
+              <LogOut className="h-4 w-4" /> {t("chrome.signOut")}
             </button>
           ) : (
             <Link
@@ -325,7 +364,7 @@ export function AccountMenu() {
               onClick={() => setOpen(false)}
               className="focus-ring flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
             >
-              <UserIcon className="h-4 w-4" /> Sign in
+              <UserIcon className="h-4 w-4" /> {t("chrome.signIn")}
             </Link>
           )}
         </div>
@@ -339,6 +378,7 @@ export function AccountMenu() {
  * ---------------------------------------------------------------------- */
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+  const { t } = useT();
   const pathname = usePathname() ?? "";
   const streak = useApp((s) => s.streak);
 
@@ -351,7 +391,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <span>
           <span className="block text-sm font-bold tracking-tight">CertPath</span>
           <span className="block text-[10px] uppercase tracking-wider text-muted-foreground">
-            Study independently
+            {t("brand.tagline")}
           </span>
         </span>
       </Link>
@@ -376,7 +416,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />
-              {item.label}
+              {t(item.labelKey)}
             </Link>
           );
         })}
@@ -385,8 +425,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       <div className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground">
         <Flame className="h-4 w-4 text-amber-500" />
         <span>
-          <strong className="text-foreground">{streak.count}</strong>-day streak
-          {streak.best > streak.count ? ` · best ${streak.best}` : ""}
+          {t("chrome.streak", { count: streak.count })}
+          {streak.best > streak.count ? t("chrome.best", { best: streak.best }) : ""}
         </span>
       </div>
 
@@ -397,7 +437,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         onClick={onNavigate}
         className="focus-ring rounded text-[11px] text-muted-foreground hover:text-foreground"
       >
-        Content policy &amp; disclaimer →
+        {t("chrome.policy")}
       </Link>
     </div>
   );
@@ -408,13 +448,14 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
  * ---------------------------------------------------------------------- */
 
 export function TopBar({ onMenu }: { onMenu: () => void }) {
+  const { t } = useT();
   const streak = useApp((s) => s.streak);
 
   return (
     <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border/70 bg-background/80 px-4 py-3 backdrop-blur-md">
       <button
         onClick={onMenu}
-        aria-label="Open navigation"
+        aria-label={t("chrome.openNav")}
         className="focus-ring grid h-9 w-9 place-items-center rounded-xl border border-border text-muted-foreground lg:hidden"
       >
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
@@ -426,11 +467,12 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
         <ExamSwitcher className="w-full max-w-[260px] lg:hidden" />
       </div>
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ms-auto flex items-center gap-2">
         <span className="hidden items-center gap-1.5 rounded-xl border border-border px-2.5 py-1.5 text-xs text-muted-foreground sm:flex">
           <Flame className="h-3.5 w-3.5 text-amber-500" />
-          <strong className="text-foreground">{streak.count}</strong> day streak
+          {t("chrome.streak", { count: streak.count })}
         </span>
+        <LanguageSwitcher />
         <ThemeToggle />
         <AccountMenu />
       </div>

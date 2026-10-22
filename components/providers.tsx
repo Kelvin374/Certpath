@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import { syncableState, useApp } from "@/lib/store";
+import { DEFAULT_LANGUAGE, isLanguageCode, isRtlLanguage } from "@/lib/i18n";
 import type { SyncableState } from "@/lib/store";
 
 /* -------------------------------------------------------------------------
@@ -127,6 +128,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
     root.classList.toggle("light", theme === "light");
     root.classList.toggle("dark", theme !== "light");
   }, [theme]);
+
+  /* ── 2b. Language ─────────────────────────────────────────────────── */
+  const language = useApp((s) => s.settings.language);
+  useEffect(() => {
+    const code = isLanguageCode(language) ? language : DEFAULT_LANGUAGE;
+    document.documentElement.lang = code;
+    document.documentElement.dir = isRtlLanguage(code) ? "rtl" : "ltr";
+  }, [language]);
 
   /* ── 3. Push local state to the account ───────────────────────────── */
   const pushState = useCallback(async () => {

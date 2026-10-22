@@ -14,6 +14,14 @@ import { generatePlan, summarizePlan } from "../lib/planner";
 import { askBuddy, starterPrompts } from "../lib/ai";
 import { computeNextReview, useApp } from "../lib/store";
 import { stateSchema } from "../lib/state-schema";
+import {
+  DICTIONARIES,
+  LANGUAGE_CODES,
+  LANGUAGES,
+  isRtlLanguage,
+  translate,
+  type MessageKey,
+} from "../lib/i18n";
 import { appOrigin } from "../lib/api-helpers";
 import {
   DUMMY_PASSWORD_HASH,
@@ -781,6 +789,43 @@ test("a real password verifies against its hash and nothing else does", async ()
   assert(await verifyPassword("a real password of decent length", hash));
   assert(!(await verifyPassword("a real password of decent lenght", hash)));
   assert(!(await verifyPassword("", hash)));
+});
+
+/* -------------------------------------------------------------------------
+ * Internationalisation
+ * ---------------------------------------------------------------------- */
+
+suite("Internationalisation");
+
+test("every supported language has a complete dictionary", () => {
+  const keys = Object.keys(DICTIONARIES.en);
+  equal(LANGUAGES.length, LANGUAGE_CODES.length, "language definitions and codes disagree");
+
+  for (const code of LANGUAGE_CODES) {
+    const dictionary = DICTIONARIES[code];
+    const missing = keys.filter((key) => !dictionary[key as keyof typeof dictionary]);
+    equal(missing.length, 0, `${code} is missing: ${missing.join(", ")}`);
+    assert(
+      LANGUAGES.some((language) => language.code === code),
+      `${code} has no language definition`,
+    );
+  }
+});
+
+test("translations interpolate placeholders and fall back cleanly", () => {
+  equal(translate("es", "chrome.streak", { count: 7 }), "Racha de 7 días");
+  assert(translate("ja", "nav.dashboard") !== "Dashboard", "Japanese nav label was not translated");
+  assert(translate("ar", "nav.dashboard") !== "Dashboard", "Arabic nav label was not translated");
+  assert(translate("sw", "nav.dashboard") !== "Dashboard", "Swahili nav label was not translated");
+
+  // Unknown languages and missing keys degrade to English / the key itself.
+  equal(translate("xx", "nav.dashboard"), "Dashboard");
+  equal(translate("es", "does.not.exist" as MessageKey), "does.not.exist");
+});
+
+test("right-to-left languages are flagged for the document direction", () => {
+  assert(isRtlLanguage("ar") && isRtlLanguage("ur") && isRtlLanguage("fa"));
+  assert(!isRtlLanguage("en") && !isRtlLanguage("zh"));
 });
 
 /* -------------------------------------------------------------------------

@@ -58,7 +58,7 @@ function decodeWithDefaults<T extends object>(value: string | null | undefined, 
 }
 
 /** Default settings, shared by the store and the server. */
-export const DEFAULT_SETTINGS: Settings = { dailyGoal: 45, theme: "dark" };
+export const DEFAULT_SETTINGS: Settings = { dailyGoal: 45, theme: "dark", language: "en" };
 
 /** Default streak, shared by the store and the server. */
 export const DEFAULT_STREAK: Streak = { count: 0, best: 0, lastActive: "" };

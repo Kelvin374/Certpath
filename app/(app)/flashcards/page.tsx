@@ -5,17 +5,24 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, RotateCcw, Layers, Trash2 } from "lucide-react";
 
 import { useApp } from "@/lib/store";
+import { useT } from "@/lib/use-i18n";
 import { CERT_BY_ID, cardsFor } from "@/data";
 import { Card, Button, Badge, Input, ProgressBar, EmptyState } from "@/components/ui";
+import type { MessageKey } from "@/lib/i18n";
 
 const RATINGS = [
-  { id: "again", label: "Again", hint: "10 min" },
-  { id: "hard", label: "Hard", hint: "~1.2×" },
-  { id: "good", label: "Good", hint: "standard" },
-  { id: "easy", label: "Easy", hint: "~1.3×" },
-] as const;
+  { id: "again", labelKey: "cards.again", hintKey: "cards.againHint" },
+  { id: "hard", labelKey: "cards.hard", hintKey: "cards.hardHint" },
+  { id: "good", labelKey: "cards.good", hintKey: "cards.goodHint" },
+  { id: "easy", labelKey: "cards.easy", hintKey: "cards.easyHint" },
+] as const satisfies readonly {
+  id: "again" | "hard" | "good" | "easy";
+  labelKey: MessageKey;
+  hintKey: MessageKey;
+}[];
 
 export default function FlashcardsPage() {
+  const { t } = useT();
   const s = useApp();
   const cert = CERT_BY_ID[s.activeCertId ?? "az-900"] ?? CERT_BY_ID["az-900"];
 
@@ -94,9 +101,13 @@ export default function FlashcardsPage() {
     <div className="mx-auto max-w-xl space-y-4 py-2">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold tracking-tight">Flashcards — {cert.examCode}</h1>
+          <h1 className="text-xl font-bold tracking-tight">{t("cards.title", { exam: cert.examCode })}</h1>
           <p className="text-xs text-muted-foreground">
-            {mastered}/{deck.length} mastered · {dueCount} due now
+            {t("cards.progress", {
+              mastered,
+              total: deck.length,
+              due: dueCount,
+            })}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -108,16 +119,16 @@ export default function FlashcardsPage() {
               setFlipped(false);
             }}
             className="focus-ring h-9 rounded-xl border border-border bg-background px-3 text-sm"
-            aria-label="Filter deck by domain"
+            aria-label={t("cards.filterLabel")}
           >
-            <option value="all">All domains ({all.length})</option>
+            <option value="all">{t("cards.allDomains", { count: all.length })}</option>
             {cert.domains.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name} ({all.filter((c) => c.domainId === d.id).length})
               </option>
             ))}
             {all.some((c) => c.domainId === "custom") ? (
-              <option value="custom">Your own cards</option>
+              <option value="custom">{t("cards.customFilter")}</option>
             ) : null}
           </select>
         </div>
@@ -133,7 +144,7 @@ export default function FlashcardsPage() {
               : "border-border text-muted-foreground hover:text-foreground"
           }`}
         >
-          Due only
+          {t("cards.dueOnly")}
         </button>
         {reviewed > 0 ? (
           <button
@@ -144,12 +155,10 @@ export default function FlashcardsPage() {
             }}
             className="focus-ring inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
           >
-            <RotateCcw className="h-3 w-3" /> Restart deck
+            <RotateCcw className="h-3 w-3" /> {t("cards.restart")}
           </button>
         ) : null}
-        <p className="text-[11px] text-muted-foreground">
-          Click the card or press Space to flip · ←/→ to rate
-        </p>
+        <p className="text-[11px] text-muted-foreground">{t("cards.hint")}</p>
       </div>
 
       {deck.length ? (
@@ -163,7 +172,7 @@ export default function FlashcardsPage() {
           <button
             className="perspective block w-full text-left"
             onClick={() => setFlipped(!flipped)}
-            aria-label="Flashcard — press space to flip"
+            aria-label={t("cards.flip")}
           >
             <AnimatePresence mode="wait">
               <motion.div
@@ -182,7 +191,7 @@ export default function FlashcardsPage() {
                       <Badge tone="accent">{card!.kind}</Badge>
                       <p className="mt-4 text-xl font-semibold">{card!.front}</p>
                       <p className="mt-3 text-[11px] text-muted-foreground">
-                        {cert.domains.find((d) => d.id === card!.domainId)?.name ?? "Your own card"}
+                        {cert.domains.find((d) => d.id === card!.domainId)?.name ?? t("cards.yourCard")}
                       </p>
                     </div>
                   </div>
@@ -203,9 +212,9 @@ export default function FlashcardsPage() {
                 key={r.id}
                 variant={r.id === "again" ? "danger" : r.id === "easy" ? "primary" : "secondary"}
                 onClick={() => rate(r.id)}
-                title={`${r.label} — ${r.hint}`}
+                title={`${t(r.labelKey)} — ${t(r.hintKey)}`}
               >
-                {r.label}
+                {t(r.labelKey)}
               </Button>
             ))}
           </div>
@@ -213,25 +222,19 @@ export default function FlashcardsPage() {
       ) : (
         <EmptyState
           icon={<Layers className="h-6 w-6" />}
-          title={dueOnly ? "Nothing is due right now" : "No cards yet for this exam"}
-          description={
-            dueOnly
-              ? "Every card in this deck is scheduled for later. Switch off 'Due only' to study ahead."
-              : "Pick another exam, or create your own card below."
-          }
+          title={dueOnly ? t("cards.nothingDueTitle") : t("cards.noCardsTitle")}
+          description={dueOnly ? t("cards.nothingDueDesc") : t("cards.noCardsDesc")}
           action={
             dueOnly ? (
               <Button size="sm" variant="secondary" onClick={() => setDueOnly(false)}>
-                Study ahead
+                {t("cards.studyAhead")}
               </Button>
             ) : null
           }
         />
       )}
 
-      <p className="text-[11px] text-muted-foreground">
-        Mastery here is a study milestone, not a certification.
-      </p>
+      <p className="text-[11px] text-muted-foreground">{t("cards.masteryNote")}</p>
 
       <CustomCardForm certId={cert.id} />
     </div>
@@ -243,6 +246,7 @@ export default function FlashcardsPage() {
  * ---------------------------------------------------------------------- */
 
 function CustomCardForm({ certId }: { certId: string }) {
+  const { t } = useT();
   const addCustomCard = useApp((s) => s.addCustomCard);
   const removeCustomCard = useApp((s) => s.removeCustomCard);
   const customCards = useApp((s) => s.customCards.filter((c) => c.certId === certId));
@@ -254,7 +258,7 @@ function CustomCardForm({ certId }: { certId: string }) {
   if (!open) {
     return (
       <Button variant="ghost" onClick={() => setOpen(true)}>
-        <Plus className="h-4 w-4" /> Create your own card
+        <Plus className="h-4 w-4" /> {t("cards.createOwn")}
       </Button>
     );
   }
@@ -264,14 +268,14 @@ function CustomCardForm({ certId }: { certId: string }) {
       <Input
         value={front}
         onChange={(e) => setFront(e.target.value)}
-        placeholder="Front (term)"
-        aria-label="Card front"
+        placeholder={t("cards.front")}
+        aria-label={t("cards.front")}
       />
       <Input
         value={back}
         onChange={(e) => setBack(e.target.value)}
-        placeholder="Back (definition)"
-        aria-label="Card back"
+        placeholder={t("cards.back")}
+        aria-label={t("cards.back")}
       />
       <div className="flex gap-2">
         <Button
@@ -289,10 +293,10 @@ function CustomCardForm({ certId }: { certId: string }) {
             setOpen(false);
           }}
         >
-          Save card
+          {t("cards.save")}
         </Button>
         <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
-          Cancel
+          {t("common.cancel")}
         </Button>
       </div>
 
@@ -309,7 +313,7 @@ function CustomCardForm({ certId }: { certId: string }) {
               </span>
               <button
                 onClick={() => removeCustomCard(c.id)}
-                aria-label={`Delete card ${c.front}`}
+                aria-label={t("cards.deleteCard", { front: c.front })}
                 className="focus-ring grid h-7 w-7 shrink-0 place-items-center rounded-lg text-muted-foreground hover:text-danger"
               >
                 <Trash2 className="h-3.5 w-3.5" />

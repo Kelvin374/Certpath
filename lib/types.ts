@@ -1,4 +1,5 @@
 import type { Flashcard } from "@/data/types";
+import type { LanguageCode } from "./i18n";
 
 /* -------------------------------------------------------------------------
  * Attempt / quiz
@@ -111,6 +112,8 @@ export interface Settings {
   /** Target number of study minutes per day. */
   dailyGoal: number;
   theme: "dark" | "light";
+  /** Interface language. Study content itself stays in English. */
+  language: LanguageCode;
 }
 
 export interface AppState {

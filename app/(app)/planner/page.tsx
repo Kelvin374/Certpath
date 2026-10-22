@@ -4,12 +4,14 @@ import { useMemo, useState } from "react";
 import { CalendarDays, Trash2 } from "lucide-react";
 
 import { useApp } from "@/lib/store";
+import { useT } from "@/lib/use-i18n";
 import { CERT_BY_ID, QUESTION_BY_ID } from "@/data";
 import { generatePlan, summarizePlan } from "@/lib/planner";
 import { Card, CardTitle, Button, Input, Badge } from "@/components/ui";
 import { scoreAttempt, todayISO, formatMinutes } from "@/lib/utils";
 
 export default function PlannerPage() {
+  const { t, language } = useT();
   const s = useApp();
   const cert = CERT_BY_ID[s.activeCertId ?? "az-900"] ?? CERT_BY_ID["az-900"];
   const existing = s.plans.find((p) => p.certId === cert.id);
@@ -61,24 +63,20 @@ export default function PlannerPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-4 py-2">
       <div>
-        <h1 className="text-xl font-bold tracking-tight">Study planner — {cert.examCode}</h1>
-        <p className="text-sm text-muted-foreground">
-          Set a target date and weekly hours; the planner builds the day-by-day schedule.
-        </p>
+        <h1 className="text-xl font-bold tracking-tight">{t("plan.title", { exam: cert.examCode })}</h1>
+        <p className="text-sm text-muted-foreground">{t("plan.subtitle")}</p>
       </div>
 
       <Card>
-        <CardTitle>Plan inputs</CardTitle>
+        <CardTitle>{t("plan.inputs")}</CardTitle>
         <div className="mt-4 grid gap-4">
           <label className="grid gap-1.5 text-sm">
-            Target exam date
+            {t("plan.targetDate")}
             <Input type="date" min={today} value={examDate} onChange={(e) => setExamDate(e.target.value)} />
           </label>
 
           <label className="grid gap-1.5 text-sm">
-            <span>
-              Hours per week: <strong>{hours}h</strong>
-            </span>
+            <span>{t("plan.hoursWeek", { hours })}</span>
             <input
               type="range"
               min={2}
@@ -86,15 +84,15 @@ export default function PlannerPage() {
               value={hours}
               onChange={(e) => setHours(+e.target.value)}
               className="w-full accent-accent"
-              aria-label="Hours per week"
+              aria-label={t("plan.hoursWeek", { hours })}
             />
           </label>
 
           <div className="text-sm">
             <p className="mb-2 flex flex-wrap items-center gap-2">
-              Weak domains
+              {t("plan.weakDomains")}
               {suggested.length > 0 ? (
-                <Badge tone="amber">auto-suggested from your quiz scores</Badge>
+                <Badge tone="amber">{t("plan.autoSuggested")}</Badge>
               ) : null}
             </p>
             <div className="flex flex-wrap gap-2">
@@ -127,35 +125,33 @@ export default function PlannerPage() {
                   examDate,
                   hoursPerWeek: hours,
                   weakDomains: effectiveWeak,
+                  language,
                   // Reuse the id so regenerating replaces the existing plan.
                   id: existing?.id,
                 }),
               )
             }
           >
-            {existing ? "Regenerate plan" : "Generate day-by-day plan"}
+            {existing ? t("plan.regenerate") : t("plan.generate")}
           </Button>
 
-          <p className="text-[11px] text-muted-foreground">
-            Multiple concurrent plans are supported — switch exams to manage each; heavy days are
-            spaced automatically to avoid stacking.
-          </p>
+          <p className="text-[11px] text-muted-foreground">{t("plan.note")}</p>
         </div>
       </Card>
 
       {existing && summary ? (
         <Card>
-          <CardTitle>Your plan — exam on {existing.examDate}</CardTitle>
+          <CardTitle>{t("plan.yourPlan", { date: existing.examDate })}</CardTitle>
           <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
             <Badge tone="neutral">
-              <CalendarDays className="h-3 w-3" /> {summary.days} study days
+              <CalendarDays className="h-3 w-3" /> {t("plan.studyDays", { count: summary.days })}
             </Badge>
-            <Badge tone="neutral">{summary.totalTasks} tasks</Badge>
-            <Badge tone="neutral">{formatMinutes(summary.totalMinutes)} total</Badge>
-            <Badge tone="neutral">{formatMinutes(summary.averageMinutes)}/day avg</Badge>
+            <Badge tone="neutral">{t("plan.tasks", { count: summary.totalTasks })}</Badge>
+            <Badge tone="neutral">{t("plan.total", { value: formatMinutes(summary.totalMinutes) })}</Badge>
+            <Badge tone="neutral">{t("plan.perDay", { value: formatMinutes(summary.averageMinutes) })}</Badge>
           </div>
 
-          <div className="mt-4 max-h-[30rem] space-y-4 overflow-y-auto pr-1">
+          <div className="mt-4 max-h-[30rem] space-y-4 overflow-y-auto pe-1">
             {grouped.map(([date, tasks]) => (
               <div key={date}>
                 <p
@@ -168,28 +164,30 @@ export default function PlannerPage() {
                     month: "short",
                     day: "numeric",
                   })}
-                  {date === today ? " · TODAY" : ""}
+                  {date === today ? ` · ${t("plan.today")}` : ""}
                 </p>
                 <div className="space-y-1.5">
-                  {tasks.map((t) => (
+                  {tasks.map((task) => (
                     <div
-                      key={t.id}
+                      key={task.id}
                       className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm"
                     >
                       <button
                         onClick={() => {
-                          s.toggleTask(existing.id, t.id);
+                          s.toggleTask(existing.id, task.id);
                           s.touchStreak();
                         }}
-                        aria-label={`Toggle ${t.label}`}
+                        aria-label={t("plan.toggleTask", { label: task.label })}
                         className={`h-4 w-4 shrink-0 rounded border ${
-                          t.done ? "bg-accent border-accent" : "border-border"
+                          task.done ? "bg-accent border-accent" : "border-border"
                         }`}
                       />
-                      <span className={t.done ? "line-through text-muted-foreground" : ""}>
-                        {t.label}
+                      <span className={task.done ? "line-through text-muted-foreground" : ""}>
+                        {task.label}
                       </span>
-                      <span className="ml-auto text-xs text-muted-foreground">{t.minutes}m</span>
+                      <span className="ms-auto text-xs text-muted-foreground">
+                        {t("card.minutes", { count: task.minutes })}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -198,7 +196,7 @@ export default function PlannerPage() {
           </div>
 
           <Button className="mt-4" variant="ghost" onClick={() => s.deletePlan(existing.id)}>
-            <Trash2 className="h-4 w-4" /> Delete plan
+            <Trash2 className="h-4 w-4" /> {t("plan.delete")}
           </Button>
         </Card>
       ) : null}

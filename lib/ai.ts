@@ -1,5 +1,6 @@
 import { CERT_BY_ID, cardsFor, questionsFor } from "@/data";
 import type { Flashcard, Question } from "@/data/types";
+import { translate, type LanguageCode } from "./i18n";
 import type { BuddyMode } from "./types";
 
 /**
@@ -460,15 +461,16 @@ export async function askBuddy(input: AskBuddyInput): Promise<AskBuddyResult> {
 }
 
 /** Suggested opening messages for a given exam. */
-export function starterPrompts(certId: string): string[] {
+export function starterPrompts(certId: string, language: LanguageCode = "en"): string[] {
   const cert = CERT_BY_ID[certId];
-  if (!cert) return ["Explain shared responsibility"];
+  if (!cert) return [translate(language, "buddy.starterExplain", { topic: "shared responsibility" })];
   const domain = cert.domains[0];
   const card = cardsFor(certId).find((c) => c.domainId === domain.id);
+  const topic = card ? card.front : domain.name;
   return [
-    card ? `Explain ${card.front}` : `Explain ${domain.name}`,
-    card ? `Give me an analogy for ${card.front}` : "Give me an analogy for the core concept",
-    `Quiz me on ${domain.name}`,
-    `Exam tip for ${domain.name}`,
+    translate(language, "buddy.starterExplain", { topic }),
+    translate(language, "buddy.starterAnalogy", { topic }),
+    translate(language, "buddy.starterQuiz", { topic }),
+    translate(language, "buddy.starterTip", { topic }),
   ];
 }

@@ -28,6 +28,14 @@ to earn a certification is to take the vendor's official exam.
 Plus accounts: register, sign in, sign out, sign out everywhere, with your progress stored
 server-side and synced across devices.
 
+The interface is available in **26 major world languages**: English, Chinese (Simplified), Hindi,
+Spanish, French, Arabic, Bengali, Portuguese, Russian, Urdu, Indonesian, German, Japanese, Marathi,
+Telugu, Turkish, Tamil, Vietnamese, Korean, Italian, Dutch, Polish, Persian, Thai, Filipino and
+Swahili. Pick a language from the globe selector in the top bar (or the Language card on the Account
+page). The choice is saved with the rest of your settings and synced to your account. Practice
+questions and flashcards stay in English, because the certification exams themselves are delivered
+in English. Arabic, Urdu and Persian switch the interface to right-to-left.
+
 ---
 
 ## Architecture
@@ -63,6 +71,8 @@ lib/
   api-helpers.ts     Route guards, error responses, origin checks
   state-io.ts        Store shape ⇄ relational tables
   state-schema.ts    The wire contract for synced state (zod)
+  i18n/              26 UI dictionaries and lookup helpers (RTL-aware)
+  use-i18n.ts        Client hook that reads the selected language from the store
 prisma/              schema.prisma (SQLite) · schema.postgres.prisma (PostgreSQL)
 scripts/             setup · validate-content · test-core · test-auth · browser-check
 ```
